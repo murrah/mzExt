@@ -28,7 +28,16 @@
 * - New plugins: strikethrough and justify full;
 * - Multiple toolbars
 * 
+* #### 07.07.2013 - v Pending
 * 
+* Murray Hopkins
+* 
+* - Fixed bug. Line 306. formatBlockSelectItem undefined when using enableFormatBlocks : false (ie when enableAll:false) 
+* - Fixed bug. Line 210. JS error '	values.toLowerCase is not a function '. Changed values.toLowerCase() (ie 'values' was plural) to value.toLowerCase()
+* - Added a config option {@link #enableKeepHtmlBreaks} for doRemoveHtml() method.  
+*   doRemoveHtml() removes <br> tags which means that if you have lines of text you lose the lines. Setting enableKeepHtmlBreaks:true will keep the <br> tags thus maintaining the lines.
+*   Use case: Pasting a list of email addresses from a html email that you want to strip the html from but maintain as a list of lines for (eg) a CSV upload.
+*   
 #Example usage:#
 
 {@img Ext.ux.form.plugin.HtmlEditor.png Ext.ux.form.plugin.HtmlEditor plugins}
@@ -92,6 +101,10 @@ Ext.define('Ext.ux.form.plugin.HtmlEditor', {
     * @cfg {Boolean} enableRemoveHtml Enable the plugin "remove html" which is removing all html entities from the entire text
     */
     enableRemoveHtml:       false,
+    /**
+    * @cfg {Boolean} enableKeepHtmlBreaks Used with enableRemoveHtml. Will keep <br> tags so you dont lose the lines of text.
+    */
+    enableKeepHtmlBreaks:     false,
     /**
     * @cfg {Boolean} enableRemoveFormatting Enable "remove format" plugin
     */
@@ -186,6 +199,8 @@ Ext.define('Ext.ux.form.plugin.HtmlEditor', {
 
         if(me.enableFormatBlocks || me.enableAll){
             var i, listFormatBlocks = new Array();
+            var formatBlockSelectItem; // MH added. Fails when we are not using enableFormatBlocks
+            
             for(i=0; i < me.listFormatBlocks.length; i++){
                 listFormatBlocks.push({
                     value:      me.listFormatBlocks[i].toLowerCase(),
@@ -193,10 +208,11 @@ Ext.define('Ext.ux.form.plugin.HtmlEditor', {
                 });
             }
             formatBlockSelectItem = Ext.widget('component', {
+            					// MH Bug. Changed values.toLowerCase() to value.toLowerCase()
                 renderTpl: [
                     '<select class="{cls}">',
                         '<tpl for="formats">',
-                            '<option value="<{value}>" <tpl if="values.toLowerCase()==parent.defaultFormatBlock"> selected</tpl>>{caption}</option>',
+                            '<option value="<{value}>" <tpl if="value.toLowerCase()==parent.defaultFormatBlock"> selected</tpl>>{caption}</option>',
                         '</tpl>',
                     '</select>'
                 ],
@@ -410,7 +426,19 @@ Ext.define('Ext.ux.form.plugin.HtmlEditor', {
             if (!Ext.isEmpty( me.editor.getValue() )) {
             	me.editor.focus();
             	var tmp = document.createElement("DIV");
-            	tmp.innerHTML = me.editor.getValue();
+            	
+            				// MH Start changes. 
+            				// It was removing <br> tags so you lost the lines.
+            				// So, I convert <br> to \n\n first, which get converted back below
+            				// so the lines are not lost.
+            				
+            	var tmpValue  = me.editor.getValue();
+            	if (me.enableKeepHtmlBreaks) tmpValue  = tmpValue.replace(/<br\s*[\/]?>/g, "\n\n");
+							// changed this assignment
+            	//tmp.innerHTML = me.editor.getValue();
+            	tmp.innerHTML = tmpValue;
+            				// MH end of changes
+
             	newString = tmp.textContent||tmp.innerText;
             	newString  = newString.replace(/\n\n/g, "<br />").replace(/.*<!--.*-->/g,"");
                 me.editor.setValue(newString);
